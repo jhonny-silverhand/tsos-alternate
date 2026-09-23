@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --tsos-bg: #FFF9F2;
+    --tsos-surface: #FFFFFF;
+    --tsos-surface-secondary: #F5F0EB;
+    --tsos-divider: #E9E0D6;
+    --tsos-action: #F97316;
+    --tsos-action-hover: #EA580C;
+    --tsos-action-soft: #FFF1E6;
+    --tsos-completed: #17803D;
+    --tsos-completed-soft: #E8F5EC;
+    --tsos-attention: #B45309;
+    --tsos-attention-soft: #FFF4E5;
+    --tsos-destructive: #B42318;
+    --tsos-destructive-soft: #FEF2F2;
+    --tsos-info: #2563EB;
+    --tsos-info-soft: #EFF6FF;
+    --tsos-accent: #7C3AED;
+    --tsos-accent-soft: #F5F3FF;
+    --tsos-text-primary: #1C1917;
+    --tsos-text-secondary: #57534E;
+    --tsos-text-muted: #A8A29E;
+  }
+
+  body {
+    background-color: var(--tsos-bg);
+    color: var(--tsos-text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  }
+}
+
+/* Custom Scrollbar for clean POS & KDS viewing */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E9E0D6;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D5C9BD;
+}
