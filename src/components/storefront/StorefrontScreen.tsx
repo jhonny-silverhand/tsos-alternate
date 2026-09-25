@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTsosStore } from '../../lib/store';
 import { MenuItem, DineTable } from '../../types';
 import { VariantModal } from '../pos/VariantModal';
@@ -18,8 +18,13 @@ import {
   ShieldCheck,
   ShieldAlert,
   Lock,
+  RefreshCw,
+  AlertOctagon,
+  Timer,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+
+const SESSION_DURATION_SECONDS = 10 * 60; // 10 minutes session limit
 
 export const StorefrontScreen: React.FC = () => {
   const {
@@ -54,6 +59,46 @@ export const StorefrontScreen: React.FC = () => {
   const tableSlug = selectedTable ? selectedTable.label.toLowerCase().replace(/[^a-z0-9]/g, '') : 't1';
   const cafeSlug = location.slug || 'coolkafe';
 
+  // 10-Minute Dynamic QR Session Token State
+  const [sessionToken, setSessionToken] = useState<string>(() => {
+    return `SES-${tableSlug}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+  });
+  const [sessionSecondsLeft, setSessionSecondsLeft] = useState<number>(SESSION_DURATION_SECONDS);
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<number>(() => Date.now() + SESSION_DURATION_SECONDS * 1000);
+
+  // Initialize and renew 10-minute session
+  const renewSession = () => {
+    const newToken = `SES-${tableSlug}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    setSessionToken(newToken);
+    setSessionSecondsLeft(SESSION_DURATION_SECONDS);
+    setSessionExpiresAt(Date.now() + SESSION_DURATION_SECONDS * 1000);
+    setIsTamperSimulated(false);
+  };
+
+  // Re-generate session when table changes
+  useEffect(() => {
+    renewSession();
+  }, [selectedTableId]);
+
+  // Live countdown timer for 10-minute validity
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((sessionExpiresAt - Date.now()) / 1000));
+      setSessionSecondsLeft(remaining);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [sessionExpiresAt]);
+
+  const isSessionExpired = sessionSecondsLeft <= 0;
+
+  // Format MM:SS for user display
+  const formatTimer = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   const safeMenuItems = menuItems || [];
   const filteredItems = safeMenuItems.filter((item) => {
     if (!item.is_available) return false;
@@ -77,14 +122,18 @@ export const StorefrontScreen: React.FC = () => {
   );
 
   const handlePlaceOrder = () => {
-    if (safeCart.length === 0 || isTamperSimulated) return;
+    if (safeCart.length === 0 || isTamperSimulated || isSessionExpired) return;
     setIsOrdering(true);
 
     setTimeout(() => {
       const order = createOrder({
         paymentMethod: 'upi',
-        customPlacedBy: selectedTable ? `Customer (${selectedTable.label} QR)` : 'Customer (Self-Order QR)',
-        customerNotes: customerNotes ? `${customerNotes} [Phone: ${customerPhone}]` : undefined,
+        customPlacedBy: selectedTable
+          ? `Customer (${selectedTable.label} QR • ${sessionToken.substring(0, 14)})`
+          : 'Customer (Self-Order QR)',
+        customerNotes: customerNotes
+          ? `${customerNotes} [Phone: ${customerPhone}] [Session: ${sessionToken}]`
+          : `[Session: ${sessionToken}]`,
       });
 
       confetti({
@@ -104,26 +153,14 @@ export const StorefrontScreen: React.FC = () => {
   return (
     <div className="min-h-[calc(100vh-100px)] bg-[#FFF9F2] flex flex-col items-center justify-start p-2 sm:p-4">
       {/* Simulation Controls Banner */}
-      <div className="w-full max-w-md mb-2 p-2.5 bg-white rounded-2xl border border-[#E9E0D6] shadow-xs flex items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-1.5 truncate">
-          <span className="font-bold text-[#1C1917]">QR Security Test:</span>
-          <span className="font-mono text-[10px] text-[#57534E] truncate">
-            /{cafeSlug}/{tableSlug}
-            {isTamperSimulated ? '?token=INVALID_SPOOF' : `?token=${selectedTable?.qr_token || 'verified'}`}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsTamperSimulated(!isTamperSimulated)}
-            className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-colors ${
-              isTamperSimulated
-                ? 'bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5]'
-                : 'bg-[#F0FDF4] text-[#16A34A] border border-[#86EFAC]'
-            }`}
-            title="Toggle between valid scanned QR code and manually altered / spoofed URL"
-          >
-            {isTamperSimulated ? 'Simulating Tampered URL' : 'Simulating Scanned QR'}
-          </button>
+      <div className="w-full max-w-md mb-2 p-2.5 bg-white rounded-2xl border border-[#E9E0D6] shadow-xs flex flex-col gap-2 text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="font-bold text-[#1C1917]">QR Security Test:</span>
+            <span className="font-mono text-[10px] text-[#57534E] truncate">
+              /{cafeSlug}/{tableSlug}?token={isTamperSimulated ? 'INVALID_SPOOF' : (selectedTable?.qr_token || 'verified')}
+            </span>
+          </div>
           <button
             onClick={() => setActiveSurface('web')}
             className="px-2 py-1 rounded-lg text-[10px] font-bold text-[#78716C] hover:text-[#1C1917] bg-[#F5F0EB] hover:bg-[#E9E0D6] border border-[#E9E0D6] transition-colors"
@@ -131,6 +168,60 @@ export const StorefrontScreen: React.FC = () => {
           >
             Exit to POS
           </button>
+        </div>
+
+        {/* 10-Minute Anti-History Token Ribbon */}
+        <div className="flex items-center justify-between bg-[#FFF9F2] p-1.5 rounded-xl border border-[#E9E0D6] text-[11px]">
+          <div className="flex items-center gap-1.5">
+            <Timer className={`w-3.5 h-3.5 ${isSessionExpired ? 'text-rose-600' : 'text-[#F97316]'}`} />
+            <span className="font-semibold text-[#1C1917]">10m QR Session:</span>
+            <span
+              className={`font-mono font-bold px-1.5 py-0.5 rounded-md ${
+                isSessionExpired
+                  ? 'bg-rose-100 text-rose-700'
+                  : sessionSecondsLeft < 120
+                  ? 'bg-amber-100 text-amber-800 animate-pulse'
+                  : 'bg-emerald-100 text-emerald-800'
+              }`}
+            >
+              {isSessionExpired ? 'EXPIRED' : formatTimer(sessionSecondsLeft)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {!isSessionExpired ? (
+              <button
+                onClick={() => {
+                  setSessionSecondsLeft(0);
+                  setSessionExpiresAt(Date.now() - 1000);
+                }}
+                className="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-[10px] font-bold"
+                title="Simulate diner opening link from history 2 hours later from home"
+              >
+                Expire (Test History)
+              </button>
+            ) : (
+              <button
+                onClick={renewSession}
+                className="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs"
+              >
+                <RefreshCw className="w-2.5 h-2.5" />
+                <span>Re-scan QR</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setIsTamperSimulated(!isTamperSimulated)}
+              className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-colors ${
+                isTamperSimulated
+                  ? 'bg-rose-100 text-rose-700 border border-rose-300'
+                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
+              }`}
+              title="Toggle URL tampering"
+            >
+              {isTamperSimulated ? 'Spoofed' : 'Tamper'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -203,6 +294,29 @@ export const StorefrontScreen: React.FC = () => {
               className="mt-2 px-4 py-2 rounded-xl bg-[#1C1917] hover:bg-[#292524] text-white text-xs font-semibold"
             >
               Scan Table QR (Simulate Scanned Token)
+            </button>
+          </div>
+        ) : isSessionExpired ? (
+          <div className="flex-1 p-6 flex flex-col items-center justify-center text-center space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200">
+              <Clock className="w-7 h-7" />
+            </div>
+            <h3 className="font-bold text-base text-[#1C1917]">Table QR Session Expired</h3>
+            <p className="text-xs text-[#57534E] max-w-xs leading-relaxed">
+              For security, table ordering sessions automatically expire after <strong>10 minutes</strong>. This prevents orders from being placed via browser history or bookmarked links after leaving the table.
+            </p>
+            <div className="p-3 bg-[#FFF9F2] rounded-xl border border-[#E9E0D6] text-xs text-[#78716C] max-w-xs text-left space-y-1">
+              <div className="font-semibold text-[#1C1917]">Why did this happen?</div>
+              <p className="text-[11px]">
+                Your physical scan at <strong>{selectedTable?.label}</strong> has expired. Please re-scan the QR code sticker placed on your table.
+              </p>
+            </div>
+            <button
+              onClick={renewSession}
+              className="mt-2 px-5 py-2.5 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Re-scan QR / Start New 10m Session</span>
             </button>
           </div>
         ) : (
@@ -426,14 +540,37 @@ export const StorefrontScreen: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-4 bg-white border-t border-[#E9E0D6]">
+            <div className="p-4 bg-white border-t border-[#E9E0D6] space-y-2">
+              {isSessionExpired ? (
+                <div className="p-2 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-800">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Session expired (10m limit)</span>
+                  </div>
+                  <button
+                    onClick={renewSession}
+                    className="px-2.5 py-1 rounded-lg bg-amber-600 text-white font-bold text-[10px] hover:bg-amber-700"
+                  >
+                    Re-scan QR
+                  </button>
+                </div>
+              ) : null}
+
               <button
-                disabled={isOrdering}
+                disabled={isOrdering || isSessionExpired || isTamperSimulated}
                 onClick={handlePlaceOrder}
-                className="w-full py-3 rounded-xl bg-[#17803D] hover:bg-[#156f35] text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3 rounded-xl bg-[#17803D] hover:bg-[#156f35] text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{isOrdering ? 'Submitting to Kitchen...' : `Pay & Send Order (₹${grandTotal})`}</span>
+                <span>
+                  {isOrdering
+                    ? 'Submitting to Kitchen...'
+                    : isSessionExpired
+                    ? 'Session Expired - Re-scan QR'
+                    : isTamperSimulated
+                    ? 'Order Locked (Tampered URL)'
+                    : `Pay & Send Order (₹${grandTotal})`}
+                </span>
               </button>
             </div>
           </div>

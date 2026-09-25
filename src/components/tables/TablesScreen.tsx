@@ -256,15 +256,16 @@ export const TablesScreen: React.FC = () => {
                 <div className="flex items-center justify-between text-[10px] font-semibold text-[#17803D]">
                   <span className="flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-[#16A34A]" />
-                    <span>Anti-Tamper Token Protected</span>
+                    <span>Anti-Tamper & 10m History Guard</span>
                   </span>
-                  <span className="font-mono text-[9px] text-[#78716C]">HMAC Verified</span>
+                  <span className="font-mono text-[9px] text-[#78716C]">10m Expiry</span>
                 </div>
                 <div className="text-[10px] font-mono text-[#57534E] break-all bg-[#FAF7F2] p-1.5 rounded-md border border-[#E9E0D6]">
                   https://tablesideordering-web.vercel.app/{location.slug || 'coolkafe'}/{viewingQrTable.label.toLowerCase().replace(/[^a-z0-9]/g, '')}?token={viewingQrTable.qr_token}
                 </div>
-                <div className="text-[9px] text-[#A8A29E] italic">
-                  * If a user manually alters the URL from t1 to t2 without scanning the physical QR code, the system blocks the order.
+                <div className="text-[9px] text-[#78716C] leading-snug">
+                  • Physical scan initiates a <strong>10-minute dynamic session token</strong>.<br />
+                  • Expired sessions prevent guests from ordering from home via browser history or saved bookmarks.
                 </div>
               </div>
 
