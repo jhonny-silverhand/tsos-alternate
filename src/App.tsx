@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTsosStore } from './lib/store';
 import { Header } from './components/common/Header';
 import { WebNavbar } from './components/common/WebNavbar';
@@ -22,18 +22,63 @@ import { StorefrontScreen } from './components/storefront/StorefrontScreen';
 import { OrderTrackingScreen } from './components/storefront/OrderTrackingScreen';
 import { WindowsAppClient } from './components/native/WindowsAppClient';
 import { AndroidAppClient } from './components/native/AndroidAppClient';
-import { OnboardingTourModal } from './components/common/OnboardingTourModal';
 import { SuperAdminScreen } from './components/superadmin/SuperAdminScreen';
+import { AuthScreen } from './components/auth/AuthScreen';
+import { CafeOnboardingWizard } from './components/auth/CafeOnboardingWizard';
+import { realtimeService } from './lib/realtimeService';
 
 export default function App() {
-  const { activeSurface, activeWebTab } = useTsosStore();
+  const { activeSurface, activeWebTab, currentProfile } = useTsosStore();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
+  // Realtime subscription setup
+  useEffect(() => {
+    if (currentProfile?.business_id) {
+      realtimeService.subscribeToTenant(currentProfile.business_id);
+    }
+    return () => {
+      realtimeService.unsubscribe();
+    };
+  }, [currentProfile?.business_id]);
+
+  // Public customer surfaces (Table QR Self Ordering & Live Order Tracking)
+  // do not require staff authentication
+  if (activeSurface === 'storefront') {
+    return (
+      <main className="min-h-screen bg-[#FFF9F2] flex flex-col min-h-0 overflow-y-auto">
+        <StorefrontScreen />
+      </main>
+    );
+  }
+
+  if (activeSurface === 'order_track') {
+    return (
+      <main className="min-h-screen bg-[#FFF9F2] flex flex-col min-h-0 overflow-y-auto">
+        <OrderTrackingScreen />
+      </main>
+    );
+  }
+
+  // SuperAdmin Platform Master Console
   if (activeSurface === 'superadmin') {
+    return <SuperAdminScreen />;
+  }
+
+  // Authentication Guard for Staff & Terminal interfaces
+  const isAuthenticated = Boolean(currentProfile?.id && currentProfile?.is_active);
+
+  if (!isAuthenticated) {
     return (
       <>
-        <Header />
-        <SuperAdminScreen />
-        <OnboardingTourModal />
+        <AuthScreen
+          onSuccess={() => {}}
+          onOpenOnboarding={() => setShowOnboarding(true)}
+        />
+        <CafeOnboardingWizard
+          isOpen={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          onCompleted={() => setShowOnboarding(false)}
+        />
       </>
     );
   }
@@ -92,20 +137,12 @@ export default function App() {
         </main>
       )}
 
-      {activeSurface === 'storefront' && (
-        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto">
-          <StorefrontScreen />
-        </main>
-      )}
-
-      {activeSurface === 'order_track' && (
-        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto">
-          <OrderTrackingScreen />
-        </main>
-      )}
-
-      {/* Guided System Walkthrough Modal */}
-      <OnboardingTourModal />
+      {/* Cafe Onboarding Wizard for new outlet registrations */}
+      <CafeOnboardingWizard
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onCompleted={() => setShowOnboarding(false)}
+      />
     </div>
   );
 }

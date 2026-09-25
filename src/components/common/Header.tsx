@@ -1,196 +1,328 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTsosStore } from '../../lib/store';
-import { ActiveSurface } from '../../types';
 import {
   Store,
-  Smartphone,
-  Monitor,
-  QrCode,
-  Compass,
-  FileCode,
-  Layers,
-  Sparkles,
   Volume2,
   VolumeX,
-  RotateCcw,
   Printer,
-  HelpCircle,
+  ShieldCheck,
+  Maximize2,
+  Minimize2,
+  Lock,
+  ChevronDown,
+  User,
   ShieldAlert,
+  Database,
+  LogOut,
+  MapPin,
+  Clock as ClockIcon,
+  Download,
 } from 'lucide-react';
 import { ConnectionStatusIndicator, CloudOfflineBanner } from './ConnectionStatusIndicator';
-import { GuidanceTooltip } from './GuidanceTooltip';
+import { StaffPinModal } from './StaffPinModal';
+import { HardwareDownloadsModal } from './HardwareDownloadsModal';
+import { authService } from '../../lib/authService';
 
 export const Header: React.FC = () => {
   const {
-    activeSurface,
-    setActiveSurface,
     location,
     currentProfile,
     audioEnabled,
     toggleAudio,
-    resetToSeed,
     feeConfig,
     printerConfig,
-    guidanceMode,
-    toggleGuidanceMode,
-    startTour,
+    setActiveSurface,
     setActiveWebTab,
+    activeSurface,
+    tenantBusinesses,
   } = useTsosStore();
 
-  const surfaces: { id: ActiveSurface; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: 'superadmin', label: 'SuperAdmin SaaS', icon: <ShieldAlert className="w-4 h-4 text-[#7C3AED]" />, badge: 'Platform Master' },
-    { id: 'web', label: 'Web POS & Ops', icon: <Store className="w-4 h-4" /> },
-    { id: 'android', label: 'Customer Android App', icon: <Smartphone className="w-4 h-4" />, badge: 'Kotlin/Compose' },
-    { id: 'windows', label: 'Windows Client', icon: <Monitor className="w-4 h-4" />, badge: 'WPF .NET 9' },
-    { id: 'storefront', label: 'Customer QR', icon: <QrCode className="w-4 h-4" /> },
-    { id: 'order_track', label: 'Track Order', icon: <Compass className="w-4 h-4" /> },
-    { id: 'marketing_v1', label: 'Marketing V1', icon: <Layers className="w-4 h-4" /> },
-    { id: 'marketing_v2', label: 'Marketing V2', icon: <Sparkles className="w-4 h-4" /> },
-    { id: 'code_viewer', label: 'Sources & SQL', icon: <FileCode className="w-4 h-4" /> },
-  ];
+  const [currentTime, setCurrentTime] = useState<string>('');
+  const [currentDate, setCurrentDate] = useState<string>('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
+  const [isHardwareModalOpen, setIsHardwareModalOpen] = useState(false);
+
+  const profileRef = useRef<HTMLDivElement>(null);
+  const locationRef = useRef<HTMLDivElement>(null);
+
+  // Digital clock update
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })
+      );
+      setCurrentDate(
+        now.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        })
+      );
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+      if (locationRef.current && !locationRef.current.contains(e.target as Node)) {
+        setIsLocationMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Fullscreen toggle
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+        setIsFullscreen(false);
+      }
+    }
+  };
 
   return (
-    <header className="bg-white border-b border-[#E9E0D6] sticky top-0 z-40 shadow-xs">
-      {/* Top Banner: Location, Fee Engine Status & Quick Controls */}
-      <div className="px-4 py-2 bg-[#FFF1E6] border-b border-[#F5E6D8] text-xs flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-[#57534E]">
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold bg-[#F97316] text-white">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            TSOS
-          </span>
-          <span className="font-semibold text-[#1C1917]">{location.name}</span>
-          <span className="text-[#A8A29E]">|</span>
-          <span className="text-[#57534E]">
-            Model: <strong className="text-[#17803D]">₹0/mo</strong> + <strong className="text-[#F97316]">₹{feeConfig.per_order_fee}/order</strong>
-          </span>
-          <span className="hidden sm:inline text-[#A8A29E]">|</span>
-          <span className="hidden sm:inline">
-            Fee Payer: <span className="font-medium capitalize text-[#1C1917]">{feeConfig.default_fee_payer}</span>
-            {feeConfig.auto_flip_enabled && (
-              <span className="text-[#A8A29E] ml-1">
-                ({feeConfig.period_order_count}/{feeConfig.customer_paid_order_limit} till flip)
-              </span>
-            )}
-          </span>
-        </div>
+    <>
+      <header className="bg-white border-b border-[#E9E0D6] sticky top-0 z-40 shadow-xs select-none">
+        {/* Main Production POS Header */}
+        <div className="px-4 py-2.5 flex items-center justify-between gap-3">
+          {/* Left: Brand & Outlet Selector */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-[#F97316] text-white flex items-center justify-center font-black text-sm shadow-xs">
+                TS
+              </div>
+              <div className="hidden sm:block">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-black text-sm text-[#1C1917] tracking-tight">TSOS</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 bg-[#FFF1E6] text-[#F97316] rounded-md border border-[#F97316]/20">
+                    CLOUD POS
+                  </span>
+                </div>
+              </div>
+            </div>
 
-        <div className="flex items-center gap-2">
-          {/* Thermal Printer Quick Badge */}
-          <GuidanceTooltip guideKey="thermal_printer_shortcut" position="bottom">
+            <div className="h-6 w-[1px] bg-[#E9E0D6] hidden sm:block" />
+
+            {/* Outlet Selector Dropdown */}
+            <div className="relative" ref={locationRef}>
+              <button
+                type="button"
+                onClick={() => setIsLocationMenuOpen(!isLocationMenuOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#E9E0D6] bg-[#FFF9F2] hover:bg-[#F5F0EB] text-[#1C1917] text-xs font-bold transition-all shadow-2xs"
+              >
+                <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
+                <span className="truncate max-w-[160px] md:max-w-[220px]">{location.name}</span>
+                <ChevronDown className="w-3 h-3 text-[#78716C]" />
+              </button>
+
+              {isLocationMenuOpen && (
+                <div className="absolute left-0 top-full mt-1.5 w-64 bg-white rounded-2xl shadow-xl border border-[#E9E0D6] p-2 z-50 animate-in fade-in">
+                  <div className="px-2.5 py-1.5 text-[11px] font-semibold text-[#78716C] uppercase tracking-wider">
+                    Cafe Locations
+                  </div>
+                  <button
+                    onClick={() => setIsLocationMenuOpen(false)}
+                    className="w-full text-left p-2.5 rounded-xl bg-[#FFF1E6] text-[#F97316] font-semibold text-xs flex items-center justify-between"
+                  >
+                    <span>{location.name}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#F97316] text-white">
+                      Active
+                    </span>
+                  </button>
+                  <div className="p-2 border-t border-[#F5F0EB] mt-1 text-[11px] text-[#78716C]">
+                    GSTIN: <span className="font-mono text-[#1C1917]">{printerConfig.gstin || '29AABCT1337C1Z0'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Live Clock */}
+            <div className="hidden lg:flex items-center gap-2 text-xs text-[#57534E] bg-white border border-[#E9E0D6] px-3 py-1.5 rounded-xl">
+              <ClockIcon className="w-3.5 h-3.5 text-[#F97316]" />
+              <span className="font-mono font-bold text-[#1C1917]">{currentTime}</span>
+              <span className="text-[#A8A29E]">·</span>
+              <span className="text-[#78716C]">{currentDate}</span>
+            </div>
+          </div>
+
+          {/* Right: Operational Hardware & Staff Controls */}
+          <div className="flex items-center gap-2">
+            {/* Thermal Printer Quick Badge */}
             <button
               onClick={() => {
                 setActiveSurface('web');
                 setActiveWebTab('settings');
               }}
-              title="Thermal Printer Settings & Hardware Status"
-              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-[#E9E0D6] hover:bg-[#F5F0EB] text-[#57534E] text-[11px] font-mono font-medium transition-colors"
+              title="Thermal Printer Status (Click to configure)"
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white border border-[#E9E0D6] hover:bg-[#F5F0EB] text-[#57534E] text-xs font-mono transition-colors shadow-2xs"
             >
-              <Printer className="w-3 h-3 text-[#F97316]" />
-              <span>{printerConfig.paper_width}</span>
-              <span className="text-[10px] text-[#A8A29E]">({printerConfig.connection_type})</span>
+              <Printer className="w-3.5 h-3.5 text-[#F97316]" />
+              <span className="font-bold text-[#1C1917]">{printerConfig.paper_width}</span>
+              <span className="text-[10px] text-[#78716C]">({printerConfig.connection_type})</span>
             </button>
-          </GuidanceTooltip>
 
-          {/* Cloud Sync Status */}
-          <GuidanceTooltip guideKey="cloud_sync_indicator" position="bottom">
+            {/* Cloud Sync Status Indicator */}
             <ConnectionStatusIndicator />
-          </GuidanceTooltip>
 
-          {/* First-Time Usage & Hover Guidance Controls */}
-          <GuidanceTooltip guideKey="guidance_toggle" position="bottom">
-            <div className="flex items-center gap-1 bg-white border border-[#E9E0D6] rounded-md p-0.5">
-              <button
-                onClick={toggleGuidanceMode}
-                title={guidanceMode ? 'Hover Guidance Enabled' : 'Hover Guidance Disabled'}
-                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold transition-colors ${
-                  guidanceMode
-                    ? 'bg-[#7C3AED] text-white shadow-2xs'
-                    : 'text-[#57534E] hover:text-[#1C1917]'
-                }`}
-              >
-                <HelpCircle className="w-3 h-3" />
-                <span>Guidance</span>
-              </button>
-              <button
-                onClick={startTour}
-                title="Start Guided System Tour"
-                className="px-1.5 py-0.5 text-[10px] font-semibold text-[#F97316] hover:bg-[#FFF9F2] rounded transition-colors"
-              >
-                Tour
-              </button>
-            </div>
-          </GuidanceTooltip>
-
-          {/* Audio Chime Toggle */}
-          <GuidanceTooltip guideKey="audio_toggle" position="bottom">
+            {/* Audio Chime Toggle */}
             <button
               onClick={toggleAudio}
-              title={audioEnabled ? 'Sound Effects Enabled' : 'Sound Effects Muted'}
-              className="p-1 rounded-md text-[#57534E] hover:text-[#1C1917] hover:bg-white/60 transition-colors"
+              title={audioEnabled ? 'Kitchen & POS Audio Chimes Enabled' : 'Audio Muted'}
+              className="p-2 rounded-xl border border-[#E9E0D6] bg-white hover:bg-[#F5F0EB] text-[#57534E] hover:text-[#1C1917] transition-colors shadow-2xs"
             >
-              {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5 text-[#A8A29E]" />}
+              {audioEnabled ? (
+                <Volume2 className="w-3.5 h-3.5 text-[#17803D]" />
+              ) : (
+                <VolumeX className="w-3.5 h-3.5 text-[#A8A29E]" />
+              )}
             </button>
-          </GuidanceTooltip>
-          
-          <button
-            onClick={() => {
-              if (window.confirm('Reset all demo data (menu, orders, stock, tables)?')) {
-                resetToSeed();
-              }
-            }}
-            title="Reset to fresh demo data"
-            className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[#57534E] hover:text-[#B42318] hover:bg-white/60 transition-colors"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Reset Demo</span>
-          </button>
 
-          <div className="h-3 w-[1px] bg-[#E9E0D6]" />
-          <span className="text-[#57534E]">
-            Logged in: <strong className="text-[#1C1917]">{currentProfile.name}</strong> ({currentProfile.role})
-          </span>
-        </div>
-      </div>
+            {/* Fullscreen Button */}
+            <button
+              onClick={toggleFullscreen}
+              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen POS Mode'}
+              className="p-2 rounded-xl border border-[#E9E0D6] bg-white hover:bg-[#F5F0EB] text-[#57534E] hover:text-[#1C1917] transition-colors shadow-2xs hidden sm:block"
+            >
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            </button>
 
-      {/* Surface Switcher Bar */}
-      <div className="px-4 py-2 flex items-center justify-between overflow-x-auto no-scrollbar gap-2">
-        <GuidanceTooltip guideKey="surface_switcher" position="bottom" className="w-full">
-          <div className="flex items-center gap-1.5 min-w-max">
-            <span className="text-xs font-semibold text-[#A8A29E] uppercase tracking-wider mr-1 hidden md:inline">
-              Surfaces:
-            </span>
-            {surfaces.map((s) => {
-              const isActive = activeSurface === s.id;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setActiveSurface(s.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    isActive
-                      ? 'bg-[#1C1917] text-white shadow-xs'
-                      : 'text-[#57534E] hover:bg-[#F5F0EB] hover:text-[#1C1917]'
-                  }`}
-                >
-                  {s.icon}
-                  <span>{s.label}</span>
-                  {s.badge && (
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                        isActive ? 'bg-[#F97316] text-white' : 'bg-[#E9E0D6] text-[#57534E]'
-                      }`}
-                    >
-                      {s.badge}
+            {/* Staff / Cashier Profile Dropdown */}
+            <div className="relative" ref={profileRef}>
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center gap-2 pl-2.5 pr-2 py-1.5 rounded-xl border border-[#E9E0D6] bg-white hover:bg-[#F5F0EB] text-xs transition-all shadow-2xs"
+              >
+                <div className="w-6 h-6 rounded-lg bg-[#FFF1E6] text-[#F97316] font-bold flex items-center justify-center text-[11px]">
+                  {currentProfile.name.charAt(0)}
+                </div>
+                <div className="text-left hidden sm:block">
+                  <span className="font-bold text-[#1C1917] block leading-tight truncate max-w-[110px]">
+                    {currentProfile.name}
+                  </span>
+                  <span className="text-[10px] text-[#78716C] capitalize block leading-none">
+                    {currentProfile.role}
+                  </span>
+                </div>
+                <ChevronDown className="w-3 h-3 text-[#78716C]" />
+              </button>
+
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-60 bg-white rounded-2xl shadow-xl border border-[#E9E0D6] p-2 z-50 animate-in fade-in space-y-1">
+                  <div className="px-3 py-2 border-b border-[#F5F0EB]">
+                    <span className="font-bold text-xs text-[#1C1917] block truncate">
+                      {currentProfile.name}
                     </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </GuidanceTooltip>
-      </div>
+                    <span className="text-[11px] text-[#78716C] capitalize block">
+                      Active Role: {currentProfile.role}
+                    </span>
+                  </div>
 
-      {/* Persistent Cloud Offline Warning Banner */}
-      <CloudOfflineBanner />
-    </header>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      setIsPinModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#FFF9F2] text-xs font-semibold text-[#1C1917] flex items-center gap-2.5 transition-colors"
+                  >
+                    <Lock className="w-4 h-4 text-[#F97316]" />
+                    <span>Switch Staff PIN / Lock</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      setActiveSurface('web');
+                      setActiveWebTab('settings');
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#FFF9F2] text-xs font-semibold text-[#1C1917] flex items-center gap-2.5 transition-colors"
+                  >
+                    <Database className="w-4 h-4 text-[#78716C]" />
+                    <span>Cloud Database & Keys</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      setIsHardwareModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#FFF9F2] text-xs font-semibold text-[#1C1917] flex items-center gap-2.5 transition-colors"
+                  >
+                    <Download className="w-4 h-4 text-[#F97316]" />
+                    <span>Hardware Downloads</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      setActiveSurface('superadmin');
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#FFF9F2] text-xs font-semibold text-[#7C3AED] flex items-center gap-2.5 transition-colors"
+                  >
+                    <ShieldAlert className="w-4 h-4 text-[#7C3AED]" />
+                    <span>SuperAdmin Platform</span>
+                  </button>
+
+                  <div className="border-t border-[#F5F0EB] pt-1">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsProfileMenuOpen(false);
+                        await authService.signOut();
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50 text-xs font-semibold text-rose-700 flex items-center gap-2.5 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out / Lock Terminal</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Persistent Cloud Offline Warning Banner */}
+        <CloudOfflineBanner />
+      </header>
+
+      {/* Fast Staff PIN Lock Modal */}
+      <StaffPinModal
+        isOpen={isPinModalOpen}
+        onClose={() => setIsPinModalOpen(false)}
+        title="Terminal Staff Sign-in / Lock"
+      />
+
+      {/* Hardware & Client Downloads Modal */}
+      <HardwareDownloadsModal
+        isOpen={isHardwareModalOpen}
+        onClose={() => setIsHardwareModalOpen(false)}
+      />
+    </>
   );
 };

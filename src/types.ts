@@ -244,6 +244,7 @@ export interface StaffMember {
   id: string;
   location_id: string;
   name: string;
+  email?: string;
   role: StaffRole;
   phone: string;
   hourly_rate: number; // in ₹ per hour (e.g. ₹200)

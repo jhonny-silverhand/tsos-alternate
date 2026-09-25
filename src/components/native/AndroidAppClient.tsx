@@ -65,6 +65,7 @@ export const AndroidAppClient: React.FC = () => {
     setRedeemedPoints,
     trackedOrderId,
     setTrackedOrderId,
+    setActiveSurface,
   } = useTsosStore();
 
   // Active customer navigation tab inside the Android smartphone
@@ -226,13 +227,21 @@ export const AndroidAppClient: React.FC = () => {
           </span>
         </div>
 
-        <button
-          onClick={() => setShowKotlinCode(true)}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#292524] hover:bg-[#3D3835] text-white border border-[#44403C] transition-colors text-[11px] font-medium"
-        >
-          <FileCode className="w-3.5 h-3.5 text-[#F97316]" />
-          <span>View Kotlin Code</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowKotlinCode(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#292524] hover:bg-[#3D3835] text-white border border-[#44403C] transition-colors text-[11px] font-medium"
+          >
+            <FileCode className="w-3.5 h-3.5 text-[#F97316]" />
+            <span>View Kotlin Code</span>
+          </button>
+          <button
+            onClick={() => setActiveSurface('web')}
+            className="px-2.5 py-1 rounded-lg bg-[#F97316] hover:bg-[#EA580C] text-white text-[11px] font-bold transition-colors"
+          >
+            Exit to POS
+          </button>
+        </div>
       </div>
 
       {/* Modern Flagship Android Smartphone Bezel (Pixel 8 / Samsung S24 aesthetic) */}

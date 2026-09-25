@@ -55,9 +55,18 @@ export const OrderTrackingScreen: React.FC = () => {
             <span>Order Menu</span>
           </button>
 
-          <span className="text-xs font-bold text-[#F97316] font-mono">
-            Order #{trackedOrder.order_number}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-[#F97316] font-mono">
+              Order #{trackedOrder.order_number}
+            </span>
+            <button
+              onClick={() => setActiveSurface('web')}
+              className="text-[11px] text-[#78716C] hover:text-[#1C1917] font-semibold px-2 py-0.5 rounded-lg border border-[#E9E0D6] hover:bg-[#F5F0EB]"
+              title="Return to Staff POS"
+            >
+              Exit to POS
+            </button>
+          </div>
         </div>
 
         {/* Live Status Animation */}

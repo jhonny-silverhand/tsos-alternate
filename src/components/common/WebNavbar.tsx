@@ -15,10 +15,12 @@ import {
   ChevronDown,
   AlertTriangle,
   Clock,
+  Monitor,
+  Smartphone,
 } from 'lucide-react';
 
 export const WebNavbar: React.FC = () => {
-  const { activeWebTab, setActiveWebTab, orders, ingredients, shifts } = useTsosStore();
+  const { activeWebTab, setActiveWebTab, setActiveSurface, orders, ingredients, shifts } = useTsosStore();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
@@ -144,6 +146,38 @@ export const WebNavbar: React.FC = () => {
                   </button>
                 );
               })}
+
+              <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#A8A29E] border-t border-[#F5F0EB] mt-1">
+                Hardware Clients
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSurface('windows');
+                  setIsMoreOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs text-[#57534E] hover:bg-[#F5F0EB] hover:text-[#1C1917] transition-colors"
+              >
+                <Monitor className="w-3.5 h-3.5 text-[#F97316]" />
+                <div>
+                  <div className="font-medium">Windows Terminal (WPF .NET 9)</div>
+                  <div className="text-[10px] text-[#A8A29E]">Desktop POS & ESC/POS Com Port</div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSurface('android');
+                  setIsMoreOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs text-[#57534E] hover:bg-[#F5F0EB] hover:text-[#1C1917] transition-colors"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-[#17803D]" />
+                <div>
+                  <div className="font-medium">Android Tablet App (Compose)</div>
+                  <div className="text-[10px] text-[#A8A29E]">Mobile Waiter & QR ordering client</div>
+                </div>
+              </button>
             </div>
           )}
         </div>

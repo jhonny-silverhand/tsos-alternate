@@ -112,17 +112,26 @@ export const StorefrontScreen: React.FC = () => {
             {isTamperSimulated ? '?token=INVALID_SPOOF' : `?token=${selectedTable?.qr_token || 'verified'}`}
           </span>
         </div>
-        <button
-          onClick={() => setIsTamperSimulated(!isTamperSimulated)}
-          className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-colors ${
-            isTamperSimulated
-              ? 'bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5]'
-              : 'bg-[#F0FDF4] text-[#16A34A] border border-[#86EFAC]'
-          }`}
-          title="Toggle between valid scanned QR code and manually altered / spoofed URL"
-        >
-          {isTamperSimulated ? 'Simulating Tampered URL' : 'Simulating Scanned QR'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsTamperSimulated(!isTamperSimulated)}
+            className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-colors ${
+              isTamperSimulated
+                ? 'bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5]'
+                : 'bg-[#F0FDF4] text-[#16A34A] border border-[#86EFAC]'
+            }`}
+            title="Toggle between valid scanned QR code and manually altered / spoofed URL"
+          >
+            {isTamperSimulated ? 'Simulating Tampered URL' : 'Simulating Scanned QR'}
+          </button>
+          <button
+            onClick={() => setActiveSurface('web')}
+            className="px-2 py-1 rounded-lg text-[10px] font-bold text-[#78716C] hover:text-[#1C1917] bg-[#F5F0EB] hover:bg-[#E9E0D6] border border-[#E9E0D6] transition-colors"
+            title="Return to Staff POS"
+          >
+            Exit to POS
+          </button>
+        </div>
       </div>
 
       {/* Mobile-Frame Container */}

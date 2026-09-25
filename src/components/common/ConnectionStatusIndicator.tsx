@@ -12,13 +12,16 @@ import {
   Server,
   Activity,
   X,
+  Settings,
 } from 'lucide-react';
+import { getSupabaseConfig } from '../../lib/supabase';
 
 export const ConnectionStatusIndicator: React.FC = () => {
-  const { cloudSync, triggerManualSync, toggleSimulatedOffline } = useTsosStore();
+  const { cloudSync, triggerManualSync, toggleSimulatedOffline, setActiveWebTab, setActiveSurface } = useTsosStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isSyncingLocal, setIsSyncingLocal] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const supabaseConfig = getSupabaseConfig();
 
   // Close popover when clicking outside
   useEffect(() => {
@@ -211,11 +214,22 @@ export const ConnectionStatusIndicator: React.FC = () => {
             </div>
 
             {/* Cloud Target Endpoint */}
-            <div className="p-2 rounded-xl bg-[#FFF9F2] text-[11px] text-[#57534E] flex items-start gap-2">
+            <div className="p-2.5 rounded-xl bg-[#FFF9F2] text-[11px] text-[#57534E] flex items-start gap-2.5 border border-[#E9E0D6]">
               <Server className="w-3.5 h-3.5 text-[#F97316] shrink-0 mt-0.5" />
-              <div className="overflow-hidden">
-                <span className="font-semibold text-[#1C1917] block">Primary Backend Endpoint:</span>
-                <span className="font-mono text-[10px] text-[#57534E] truncate block">
+              <div className="overflow-hidden flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-[#1C1917]">Supabase Backend:</span>
+                  <span
+                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
+                      supabaseConfig.isConfigured
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {supabaseConfig.isConfigured ? 'Custom Supabase' : 'Demo Sandbox'}
+                  </span>
+                </div>
+                <span className="font-mono text-[10px] text-[#57534E] truncate block mt-0.5">
                   {cloudSync.endpoint}
                 </span>
               </div>
@@ -236,6 +250,19 @@ export const ConnectionStatusIndicator: React.FC = () => {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
               <span>{isSyncing ? 'Synchronizing with Database...' : 'Force Sync with Cloud DB'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSurface('web');
+                setActiveWebTab('settings');
+                setIsOpen(false);
+              }}
+              className="w-full py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 bg-[#F5F0EB] hover:bg-[#E9E0D6] text-[#1C1917] border border-[#E9E0D6] transition-all"
+            >
+              <Settings className="w-3.5 h-3.5 text-[#F97316]" />
+              <span>Configure Supabase Keys & SQL Migration</span>
             </button>
 
             {/* Test Simulation Switch */}

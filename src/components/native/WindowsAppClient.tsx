@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 export const WindowsAppClient: React.FC = () => {
-  const { location, currentProfile, audioEnabled, orders } = useTsosStore();
+  const { location, currentProfile, audioEnabled, orders, setActiveSurface } = useTsosStore();
   const [windowsTab, setWindowsTab] = useState<'pos' | 'kds'>('pos');
   const [printerStatus, setPrinterStatus] = useState<'ready' | 'printing' | 'error'>('ready');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -67,7 +67,11 @@ export const WindowsAppClient: React.FC = () => {
           <button className="h-9 px-3 hover:bg-[#3A3A3A] text-gray-300 flex items-center justify-center">
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
-          <button className="h-9 px-3 hover:bg-[#C42B1C] text-gray-300 hover:text-white flex items-center justify-center">
+          <button 
+            onClick={() => setActiveSurface('web')}
+            title="Exit to Web POS"
+            className="h-9 px-3 hover:bg-[#C42B1C] text-gray-300 hover:text-white flex items-center justify-center transition-colors"
+          >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>

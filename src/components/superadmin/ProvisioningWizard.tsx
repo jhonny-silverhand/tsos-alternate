@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTsosStore } from '../../lib/store';
 import { SAAS_PLANS } from '../../data/saasSeedData';
 import { TenantBusiness, SubscriptionPlanId, BillingCycle } from '../../types';
+import { syncTenantToSupabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   Building2,
   User,
@@ -205,6 +206,9 @@ export const ProvisioningWizard: React.FC = () => {
     };
 
     addTenantBusiness(newBusiness);
+    if (isSupabaseConfigured()) {
+      syncTenantToSupabase(newBusiness).catch((err) => console.warn('Supabase tenant provision background error:', err));
+    }
     setCreatedTenant(newBusiness);
   };
 

@@ -55,6 +55,12 @@ import {
   INITIAL_TENANT_BUSINESSES,
   INITIAL_PLATFORM_AUDIT_LOGS,
 } from '../data/saasSeedData';
+import {
+  getSupabaseConfig,
+  testSupabaseConnection,
+  isSupabaseConfigured,
+  getSupabaseClient,
+} from './supabase';
 
 export const getCustomerTier = (points: number): LoyaltyTier => {
   if (points >= 500) return 'Platinum';
@@ -271,7 +277,7 @@ const DEFAULT_STATE = {
     lastSyncedAt: new Date().toISOString(),
     pendingChangesCount: 0,
     latencyMs: 24,
-    endpoint: 'PostgreSQL Cloud DB Cluster (asia-southeast1)',
+    endpoint: getSupabaseConfig().url,
     simulatedOffline: false,
   } as CloudSyncState,
   offers: SEED_OFFERS,
@@ -362,7 +368,7 @@ const DEFAULT_STATE = {
       timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     },
   ] as PrintLogEntry[],
-  guidanceMode: true,
+  guidanceMode: false,
   isTourOpen: false,
   currentTourStep: 0,
   trackedOrderId: 'ord-102',
@@ -416,6 +422,8 @@ const getInitialState = () => {
         selectedCustomerId: null,
         appliedOffer: null,
         redeemedPoints: 0,
+        guidanceMode: false,
+        isTourOpen: false,
       };
     }
   } catch (e) {
@@ -796,6 +804,36 @@ export const useTsosStore = create<TsosState>((set, get) => ({
       trackedOrderId: newOrder.id,
     }));
 
+    // Replicate to Supabase if live database configured
+    if (isSupabaseConfigured()) {
+      (async () => {
+        try {
+          const client = getSupabaseClient();
+          const { error } = await client
+            .from('orders')
+            .insert({
+              order_number: `ORD-${newOrder.order_number}`,
+              order_type: newOrder.order_type,
+              table_label: newOrder.table_label,
+              customer_name: newOrder.customer_name,
+              customer_phone: newOrder.customer_phone,
+              subtotal: newOrder.subtotal,
+              tax_total: newOrder.tax_total,
+              discount_total: newOrder.discount_total,
+              platform_fee: newOrder.platform_fee,
+              grand_total: newOrder.grand_total,
+              status: newOrder.status,
+              payment_method: newOrder.payment_method,
+              payment_status: newOrder.payment_status,
+              placed_by: newOrder.placed_by,
+            });
+          if (error) console.warn('Supabase order replicate:', error.message);
+        } catch (err) {
+          console.warn('Supabase async sync error:', err);
+        }
+      })();
+    }
+
     return newOrder;
   },
 
@@ -920,6 +958,21 @@ export const useTsosStore = create<TsosState>((set, get) => ({
       tables: updatedTables,
       feeConfig: updatedFeeConfig,
     }));
+
+    if (isSupabaseConfigured()) {
+      (async () => {
+        try {
+          const client = getSupabaseClient();
+          const { error } = await client
+            .from('orders')
+            .update({ status: nextStatus })
+            .eq('order_number', `ORD-${order.order_number}`);
+          if (error) console.warn('Supabase status replicate:', error.message);
+        } catch (err) {
+          console.warn('Supabase status sync error:', err);
+        }
+      })();
+    }
   },
 
   cancelOrder: (orderId, reason = 'Customer cancelled') => {
@@ -1049,14 +1102,19 @@ export const useTsosStore = create<TsosState>((set, get) => ({
       cloudSync: { ...s.cloudSync, status: 'syncing' },
     }));
 
-    // Simulate network round-trip handshake
-    await new Promise((resolve) => setTimeout(resolve, 850));
+    const config = getSupabaseConfig();
+    const testResult = await testSupabaseConnection();
 
     const current = get().cloudSync;
     const isActuallyOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
-    if (current.simulatedOffline || !isActuallyOnline) {
+    if (current.simulatedOffline || !isActuallyOnline || !testResult.success) {
       set({
-        cloudSync: { ...current, status: 'offline', latencyMs: 0 },
+        cloudSync: {
+          ...current,
+          status: 'offline',
+          latencyMs: 0,
+          endpoint: config.url,
+        },
       });
     } else {
       set({
@@ -1065,7 +1123,8 @@ export const useTsosStore = create<TsosState>((set, get) => ({
           status: 'connected',
           lastSyncedAt: new Date().toISOString(),
           pendingChangesCount: 0,
-          latencyMs: Math.floor(18 + Math.random() * 15),
+          latencyMs: testResult.latencyMs || Math.floor(18 + Math.random() * 15),
+          endpoint: config.url,
         },
       });
     }

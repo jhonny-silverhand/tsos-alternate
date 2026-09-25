@@ -29,6 +29,7 @@ import {
   printViaBluetooth,
 } from '../../lib/printerService';
 import { GuidanceTooltip } from '../common/GuidanceTooltip';
+import { SupabaseConfigCard } from './SupabaseConfigCard';
 
 export const SettingsScreen: React.FC = () => {
   const {
@@ -144,7 +145,10 @@ export const SettingsScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* 1. THERMAL BILL & KOT PRINTER INTEGRATION */}
+        {/* 1. SUPABASE CLOUD DATABASE CONFIGURATION */}
+        <SupabaseConfigCard />
+
+        {/* 2. THERMAL BILL & KOT PRINTER INTEGRATION */}
         <div className="bg-white rounded-3xl border border-[#E9E0D6] p-6 shadow-xs space-y-6">
           <div className="flex items-center justify-between border-b border-[#F5F0EB] pb-4">
             <div className="flex items-center gap-2.5">

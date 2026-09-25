@@ -22,6 +22,7 @@ import {
   Percent,
   Calendar,
   AlertCircle,
+  LogIn,
 } from 'lucide-react';
 
 export const BusinessDirectory: React.FC = () => {
@@ -32,6 +33,7 @@ export const BusinessDirectory: React.FC = () => {
     setBusinessStatus,
     deleteTenantBusiness,
     setActiveSuperAdminTab,
+    enterTenantWorkspace,
   } = useTsosStore();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -314,6 +316,16 @@ export const BusinessDirectory: React.FC = () => {
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Enter Workspace Button */}
+                          <button
+                            onClick={() => enterTenantWorkspace(b.id)}
+                            title={`Enter Scoped Cafe Workspace as ${b.name}`}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#FAF6F0] hover:bg-[#F3ECE4] text-[#F97316] hover:text-[#EA580C] text-xs font-semibold border border-[#E9E0D6] transition-colors"
+                          >
+                            <LogIn className="w-3.5 h-3.5" />
+                            <span>Workspace</span>
+                          </button>
+
                           {/* Change Subscription / Deal Button */}
                           <button
                             onClick={() => openSubModal(b)}
